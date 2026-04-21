@@ -10,7 +10,7 @@
 
 1. **多数据库支持**：同时支持 PostgreSQL 和 MySQL，通过统一接口操作不同类型的数据库。
 2. **多连接管理**：通过 JSON 配置文件定义多个命名连接，一个 MCP Server 实例即可服务多个数据库。
-3. **安全至上**：集成 `node-sql-parser` 和正则双重校验。拦截所有数据修改与破坏性操作，仅放行 `SELECT`、表结构查询、以及部分无破坏性结构变更（`CREATE TABLE`, 新增字段的 `ALTER TABLE` 等）。
+3. **安全至上**：集成 `node-sql-parser` 和正则双重校验，采用**严格白名单策略**。仅放行 `SELECT`、表结构查询、无破坏性结构变更（`CREATE TABLE`、新增/修改字段的 `ALTER TABLE`）以及注释操作（`COMMENT`）。所有未被明确授权的操作（包括 `DELETE`、`DROP`、`UPDATE`、`INSERT`、`TRUNCATE`、`GRANT`、`REVOKE`、`RENAME`、`EXECUTE` 等）一律拒绝。
 4. **智能方言切换**：SQL 校验引擎根据目标连接的数据库类型自动切换校验方言。
 5. **内置检索辅助工具**：自带 `list_connections`、`list_tables` 与 `describe_table` 高级封装工具，大语言模型无需猜测底层 DDL 也能完美完成结构化查询。
 
@@ -149,4 +149,4 @@ db-mcp-server --config <path-to-config.json>
 - **参数**：
   - `connectionName` (String): 目标连接名称。
   - `sql` (String): 即将被运行的 SQL。
-- **受限情况**：模型如尝试执行包含 `UPDATE`, `INSERT`, `DELETE`, `DROP`, `TRUNCATE` 等任何破坏性关键字的命令，会收获安全拦截报错并中断执行。
+- **受限情况**：采用严格白名单策略，仅允许 `SELECT`、`CREATE`、`ALTER`（限 ADD/MODIFY）、`COMMENT` 操作。所有不在白名单内的操作（包括但不限于 `UPDATE`, `INSERT`, `DELETE`, `DROP`, `TRUNCATE`, `GRANT`, `REVOKE`, `RENAME`, `EXECUTE` 等）均会被安全层拦截并中断执行。

@@ -116,7 +116,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
             },
             {
                 name: 'execute_sql',
-                description: 'Execute a safe SQL statement (SELECT, CREATE, ALTER ADD allowed. DELETE, DROP, UPDATE, INSERT not allowed).',
+                description: 'Execute a safe SQL statement. Allowed: SELECT, CREATE, ALTER (ADD/MODIFY only), COMMENT. Blocked: DELETE, DROP, UPDATE, INSERT, TRUNCATE, GRANT, REVOKE, RENAME, EXECUTE, and all other destructive operations.',
                 inputSchema: {
                     type: 'object',
                     properties: {
