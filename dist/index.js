@@ -150,6 +150,24 @@ server.setRequestHandler(types_js_1.ListToolsRequestSchema, async () => {
                     required: ['connectionName', 'sql'],
                 },
             },
+            {
+                name: 'insert_data',
+                description: 'Execute an INSERT SQL statement to insert data into the database. Supports standard VALUES insert, INSERT...SELECT, and multi-row batch inserts. Only INSERT statements are allowed; all other operations are rejected. This tool is independent of execute_sql and can be toggled separately in the MCP client.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        connectionName: {
+                            type: 'string',
+                            description: 'Name of the database connection to use.',
+                        },
+                        sql: {
+                            type: 'string',
+                            description: 'The INSERT SQL statement to execute. Only INSERT statements are permitted.',
+                        },
+                    },
+                    required: ['connectionName', 'sql'],
+                },
+            },
         ],
     };
 });
@@ -209,6 +227,29 @@ server.setRequestHandler(types_js_1.CallToolRequestSchema, async (request) => {
                 };
             }
             // 执行
+            const db = connectionManager.getConnection(connectionName);
+            const rows = await db.query(sql);
+            return {
+                content: [{ type: 'text', text: JSON.stringify(rows, null, 2) }],
+            };
+        }
+        // --- insert_data ---
+        if (request.params.name === 'insert_data') {
+            const { connectionName, sql } = request.params.arguments;
+            if (!connectionName) {
+                throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, 'connectionName is required');
+            }
+            if (!sql) {
+                throw new types_js_1.McpError(types_js_1.ErrorCode.InvalidParams, 'sql is required');
+            }
+            const config = connectionManager.getConnectionConfig(connectionName);
+            const validationResult = (0, validator_js_1.validateInsertSql)(sql, config.type);
+            if (!validationResult.valid) {
+                return {
+                    content: [{ type: 'text', text: `SECURITY ERROR: ${validationResult.error}` }],
+                    isError: true,
+                };
+            }
             const db = connectionManager.getConnection(connectionName);
             const rows = await db.query(sql);
             return {
