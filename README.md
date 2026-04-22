@@ -2,7 +2,7 @@
 
 本程序是一个为大语言模型设计、遵循 [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) 协议的底层数据库接入服务。它可以作为大语言模型（如 Antigravity）的外部数据库交互工具。
 
-支持 **PostgreSQL** 和 **MySQL** 数据库，并可通过配置文件同时管理多个数据库连接。内置了防止破坏性操作（`DELETE`, `DROP` 等）的 SQL 分析防火墙，主张"安全的数据库分析问答"。
+支持 **PostgreSQL** 和 **MySQL** 数据库，并可通过配置文件同时管理多个数据库连接。内置了防止破坏性操作（`DELETE`, `DROP` 等）的 SQL 分析防火墙，主张"安全的数据库分析问答"。同时提供可独立开关的 `insert_data` 工具，按需开启数据插入能力。
 
 ---
 
@@ -13,6 +13,7 @@
 3. **安全至上**：集成 `node-sql-parser` 和正则双重校验，采用**严格白名单策略**。仅放行 `SELECT`、表结构查询、无破坏性结构变更（`CREATE TABLE`、新增/修改字段的 `ALTER TABLE`）以及注释操作（`COMMENT`）。所有未被明确授权的操作（包括 `DELETE`、`DROP`、`UPDATE`、`INSERT`、`TRUNCATE`、`GRANT`、`REVOKE`、`RENAME`、`EXECUTE` 等）一律拒绝。
 4. **智能方言切换**：SQL 校验引擎根据目标连接的数据库类型自动切换校验方言。
 5. **内置检索辅助工具**：自带 `list_connections`、`list_tables` 与 `describe_table` 高级封装工具，大语言模型无需猜测底层 DDL 也能完美完成结构化查询。
+6. **可选数据插入**：提供独立的 `insert_data` 工具，支持标准 VALUES 插入、`INSERT...SELECT`、多行批量插入。该工具与 `execute_sql` 完全独立，可在 MCP 客户端中单独开启或关闭，灵活满足数据写入需求。
 
 ---
 
@@ -127,7 +128,7 @@ db-mcp-server --config <path-to-config.json>
 
 ## 🧰 模型所能调用的工具 (Tools)
 
-一旦该 Server 连接至大语言模型，它将主动提供以下四个方法给模型支配：
+一旦该 Server 连接至大语言模型，它将主动提供以下五个方法给模型支配：
 
 ### 1. `list_connections`
 - **说明**：列出配置文件中所有可用的数据库连接（含名称、类型、主机、端口、数据库名等信息，不含密码）。
@@ -150,3 +151,11 @@ db-mcp-server --config <path-to-config.json>
   - `connectionName` (String): 目标连接名称。
   - `sql` (String): 即将被运行的 SQL。
 - **受限情况**：采用严格白名单策略，仅允许 `SELECT`、`CREATE`、`ALTER`（限 ADD/MODIFY）、`COMMENT` 操作。所有不在白名单内的操作（包括但不限于 `UPDATE`, `INSERT`, `DELETE`, `DROP`, `TRUNCATE`, `GRANT`, `REVOKE`, `RENAME`, `EXECUTE` 等）均会被安全层拦截并中断执行。
+
+### 5. `insert_data`
+- **说明**：在指定连接上执行 INSERT 语句，专门用于数据插入场景。支持标准 `INSERT INTO ... VALUES` 插入、`INSERT INTO ... SELECT` 查询插入以及多行批量插入。该工具与 `execute_sql` 完全独立，拥有独立的安全校验逻辑。
+- **参数**：
+  - `connectionName` (String): 目标连接名称。
+  - `sql` (String): 仅限 INSERT 语句。
+- **受限情况**：采用 INSERT 专属白名单策略，仅允许 `INSERT` 操作。所有非 INSERT 的操作（包括 `SELECT`、`UPDATE`、`DELETE`、`DROP` 等）均会被拒绝。同时检测分号拼接攻击等安全风险。
+- **开关控制**：该工具可在 MCP 客户端（如 Claude Desktop、Cursor、Antigravity 等）的工具管理界面中单独启用或禁用，无需修改任何配置文件。
